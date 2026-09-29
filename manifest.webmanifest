@@ -1,0 +1,16 @@
+{
+  "name": "番茄钟",
+  "short_name": "番茄钟",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#16181f",
+  "theme_color": "#16181f",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

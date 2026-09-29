@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>🍅 番茄钟</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="番茄钟">
+<meta name="theme-color" content="#16181f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="icon" href="icon-512.png">
+<style>
+:root {
+  --bg: #16181f;
+  --fg: #e8eaf0;
+  --muted: #8b90a0;
+  --card: #1e2129;
+  --track: rgba(255,255,255,.08);
+  --red: #e6452f;
+  --green: #3f9d4e;
+  --teal: #1f8a8a;
+  --accent: var(--red);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f5f7;
+    --fg: #1c1e26;
+    --muted: #6b7080;
+    --card: #ffffff;
+    --track: rgba(0,0,0,.08);
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  transition: background .2s;
+}
+main {
+  width: 100%;
+  max-width: 430px;
+  padding: max(24px, env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 头部 */
+header { display: flex; align-items: baseline; justify-content: space-between; }
+.phase { font-size: 20px; font-weight: 700; }
+.stat { font-size: 13px; color: var(--muted); }
+
+/* 圆环 */
+.ring-wrap { position: relative; width: min(72vw, 280px); margin: 0 auto; }
+.ring { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+.ring .track { fill: none; stroke: var(--track); stroke-width: 10; }
+.ring .bar {
+  fill: none; stroke: var(--accent); stroke-width: 10; stroke-linecap: round;
+  stroke-dasharray: 552.92; /* 2π × 88 */
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset .2s linear, stroke .3s;
+}
+.time-box {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+}
+.time {
+  font-family: ui-rounded, -apple-system, "PingFang SC", sans-serif;
+  font-size: clamp(42px, 16vw, 60px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+}
+.hint { font-size: 13px; color: var(--muted); }
+
+/* 按钮 */
+.controls { display: flex; gap: 10px; }
+button {
+  font: inherit;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 18px;
+  background: var(--card);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: transform .05s, opacity .15s;
+}
+button:active { transform: scale(.97); }
+button.primary { flex: 1; background: var(--accent); color: #fff; transition: background .3s; }
+
+/* 设置 */
+details { background: var(--card); border-radius: 12px; padding: 10px 14px; }
+summary { cursor: pointer; font-size: 14px; color: var(--muted); user-select: none; }
+details[open] summary { margin-bottom: 8px; }
+.row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 0; font-size: 15px;
+}
+.stepper { display: flex; align-items: center; gap: 10px; }
+.stepper button { padding: 4px 12px; font-size: 16px; }
+.stepper span { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; font-size: 14px; color: var(--muted); }
+input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); }
+
+footer { text-align: center; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="phase" id="phase">🍅 专注</div>
+    <div class="stat" id="statToday">今日 0</div>
+  </header>
+
+  <div class="ring-wrap">
+    <svg class="ring" viewBox="0 0 200 200">
+      <circle class="track" cx="100" cy="100" r="88"/>
+      <circle class="bar" id="bar" cx="100" cy="100" r="88"/>
+    </svg>
+    <div class="time-box">
+      <div class="time" id="time">25:00</div>
+      <div class="hint" id="hint">准备开始</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="primary" id="btnStart">开始</button>
+    <button id="btnSkip">跳过</button>
+    <button id="btnReset">重置</button>
+  </div>
+
+  <details class="settings">
+    <summary>设置</summary>
+    <div class="row"><span>专注时长</span>
+      <div class="stepper"><button data-act="work,-1">−</button><span id="vWork">25 分</span><button data-act="work,1">+</button></div>
+    </div>
+    <div class="row"><span>短休息</span>
+      <div class="stepper"><button data-act="short,-1">−</button><span id="vShort">5 分</span><button data-act="short,1">+</button></div>
+    </div>
+    <div class="row"><span>长休息</span>
+      <div class="stepper"><button data-act="long,-1">−</button><span id="vLong">15 分</span><button data-act="long,1">+</button></div>
+    </div>
+    <div class="row"><span>长休息间隔</span>
+      <div class="stepper"><button data-act="interval,-1">−</button><span id="vInterval">4 轮</span><button data-act="interval,1">+</button></div>
+    </div>
+    <div class="row"><span>自动开始下一轮</span><input type="checkbox" id="autoStart"></div>
+    <div class="row"><span>结束提示音</span><input type="checkbox" id="sound"></div>
+  </details>
+
+  <footer><span id="statTotal">累计 0</span> · 加入主屏幕后即可像 App 一样使用</footer>
+</main>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const LS = { state: 'pomodoro.state.v1', stats: 'pomodoro.stats.v1', settings: 'pomodoro.settings.v1' };
+const RING_C = 2 * Math.PI * 88; // 552.92
+
+const PHASES = {
+  work:  { title: '专注',   emoji: '🍅', color: 'var(--red)' },
+  short: { title: '短休息', emoji: '☕️', color: 'var(--green)' },
+  long:  { title: '长休息', emoji: '🌴', color: 'var(--teal)' },
+};
+
+// ---------- 状态 ----------
+let settings = Object.assign(
+  { work: 25, short: 5, long: 15, interval: 4, autoStart: true, sound: true },
+  JSON.parse(localStorage.getItem(LS.settings) || '{}'));
+let completedDates = (JSON.parse(localStorage.getItem(LS.stats) || '[]') || []).map(Number);
+let phase = 'work', remaining = settings.work * 60, running = false, endAt = null, workCycle = 0;
+
+const duration = p => settings[p] * 60;
+const saveState = () => localStorage.setItem(LS.state, JSON.stringify({ phase, remaining, running, endAt, workCycle }));
+const saveStats = () => localStorage.setItem(LS.stats, JSON.stringify(completedDates));
+const saveSettings = () => localStorage.setItem(LS.settings, JSON.stringify(settings));
+
+try {
+  const s = JSON.parse(localStorage.getItem(LS.state) || 'null');
+  if (s && PHASES[s.phase]) {
+    phase = s.phase; remaining = Math.max(0, s.remaining || 0);
+    running = !!s.running; endAt = s.endAt || null; workCycle = s.workCycle || 0;
+  }
+} catch (e) {}
+
+// ---------- 计时 ----------
+function completePhase() {
+  const prev = phase;
+  if (phase === 'work') {
+    workCycle++;
+    completedDates.push(Date.now());
+    phase = workCycle >= settings.interval ? 'long' : 'short';
+    if (phase === 'long') workCycle = 0;
+  } else {
+    phase = 'work';
+  }
+  remaining = duration(phase);
+  running = settings.autoStart;
+  endAt = running ? Date.now() + remaining * 1000 : null;
+  saveState(); saveStats();
+  notify(prev);
+  if (settings.sound) ding();
+  render();
+}
+
+// 页面被 iOS 挂起期间，回来后按真实时间追平进度
+function catchUp() {
+  if (!running || !endAt) return;
+  let p = phase, end = endAt, cycle = workCycle, gained = [], guard = 0;
+  while (end <= Date.now() && guard++ < 4) {
+    if (p === 'work') {
+      cycle++;
+      gained.push(end);
+      p = cycle >= settings.interval ? 'long' : 'short';
+      if (p === 'long') cycle = 0;
+    } else {
+      p = 'work';
+    }
+    end += duration(p) * 1000;
+  }
+  if (guard >= 4) {
+    // 离开太久（超过 3 个阶段），不伪造记录，回到待开始状态
+    phase = 'work'; remaining = duration('work'); running = false; endAt = null; workCycle = 0;
+  } else {
+    phase = p; workCycle = cycle;
+    completedDates.push(...gained);
+    if (end > Date.now()) { running = true; endAt = end; remaining = (end - Date.now()) / 1000; }
+    else { running = false; endAt = null; remaining = duration(phase); }
+  }
+  saveState(); saveStats();
+}
+
+function tick() {
+  if (!running || !endAt) return;
+  const r = (endAt - Date.now()) / 1000;
+  if (r <= 0) { remaining = 0; completePhase(); }
+  else remaining = r;
+  render();
+}
+
+function start() {
+  unlockAudio();
+  running = true;
+  endAt = Date.now() + remaining * 1000;
+  saveState(); render();
+}
+function pause() {
+  remaining = Math.max(0, (endAt - Date.now()) / 1000);
+  running = false; endAt = null;
+  saveState(); render();
+}
+function skip() {
+  running = false; endAt = null;
+  phase = phase === 'work' ? 'short' : 'work';
+  remaining = duration(phase);
+  saveState(); render();
+}
+function reset() {
+  running = false; endAt = null;
+  remaining = duration(phase);
+  saveState(); render();
+}
+
+// ---------- 提示音（Web Audio 合成，无需音频文件）----------
+let actx = null;
+function unlockAudio() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) {}
+}
+function ding() {
+  if (!settings.sound) return;
+  try {
+    unlockAudio();
+    const t0 = actx.currentTime;
+    [[880, 0], [1174.66, 0.18]].forEach(([f, dt]) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + dt);
+      g.gain.exponentialRampToValueAtTime(0.4, t0 + dt + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.5);
+      o.connect(g).connect(actx.destination);
+      o.start(t0 + dt); o.stop(t0 + dt + 0.55);
+    });
+  } catch (e) {}
+}
+
+// ---------- 通知（仅桌面浏览器/Android 有效；iOS 需 HTTPS + Web Push）----------
+function notify(prev) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const body = prev === 'work'
+    ? (phase === 'long' ? `完成一轮！休息 ${settings.long} 分钟吧` : `休息 ${settings.short} 分钟吧`)
+    : '开始新一轮专注吧';
+  try { new Notification(prev === 'work' ? '🍅 专注结束' : '💪 休息结束', { body }); } catch (e) {}
+}
+
+// ---------- 渲染 ----------
+function fmt(s) {
+  s = Math.max(0, Math.ceil(s));
+  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+function todayCount() {
+  const d = new Date();
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return completedDates.filter(t => t >= start).length;
+}
+function render() {
+  const meta = PHASES[phase];
+  const idle = phase === 'work' && !running && remaining >= duration('work');
+  document.documentElement.style.setProperty('--accent', meta.color);
+
+  $('phase').textContent = `${meta.emoji} ${meta.title}`;
+  $('time').textContent = fmt(remaining);
+  $('hint').textContent = running ? (phase === 'work' ? '专注中…' : '休息中…') : (idle ? '准备开始' : '已暂停');
+  $('btnStart').textContent = running ? '暂停' : '开始';
+
+  const progress = Math.min(1, Math.max(0, 1 - remaining / duration(phase)));
+  $('bar').style.strokeDashoffset = RING_C * (1 - progress);
+
+  $('statToday').textContent = `今日 ${todayCount()}`;
+  $('statTotal').textContent = `累计 ${completedDates.length}`;
+
+  $('autoStart').checked = settings.autoStart;
+  $('sound').checked = settings.sound;
+
+  document.title = idle ? '🍅 番茄钟' : `${running ? '' : '⏸ '}${meta.emoji} ${fmt(remaining)}`;
+}
+
+// ---------- 事件绑定 ----------
+$('btnStart').addEventListener('click', () => {
+  unlockAudio();
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+  running ? pause() : start();
+});
+$('btnSkip').addEventListener('click', skip);
+$('btnReset').addEventListener('click', reset);
+
+document.querySelectorAll('.stepper button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const [key, delta] = btn.dataset.act.split(',');
+    const range = { work: [1, 90], short: [1, 30], long: [1, 60], interval: [2, 8] }[key];
+    const wasIdle = !running && phase === 'work' && Math.abs(remaining - settings.work * 60) < 1;
+    settings[key] = Math.min(range[1], Math.max(range[0], settings[key] + Number(delta)));
+    if (wasIdle && phase === 'work') remaining = settings.work * 60;
+    else if (!running && remaining > duration(phase)) remaining = duration(phase);
+    saveSettings(); saveState(); render();
+  });
+});
+
+$('autoStart').addEventListener('change', e => { settings.autoStart = e.target.checked; saveSettings(); });
+$('sound').addEventListener('change', e => { settings.sound = e.target.checked; saveSettings(); if (e.target.checked) unlockAudio(); });
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { catchUp(); render(); } });
+window.addEventListener('pageshow', () => { catchUp(); render(); });
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ---------- 启动 ----------
+catchUp();
+render();
+setInterval(tick, 250);
+</script>
+</body>
+</html>
