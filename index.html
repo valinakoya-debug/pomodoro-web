@@ -165,7 +165,7 @@ const LS = { state: 'pomodoro.state.v1', stats: 'pomodoro.stats.v1', settings: '
 const RING_C = 2 * Math.PI * 88; // 552.92
 
 const PHASES = {
-  work:  { title: '专注',   emoji: '🍅', color: 'var(--red)' },
+  work:  { title: '专注',   emoji: '📖', color: 'var(--red)' },
   short: { title: '短休息', emoji: '☕️', color: 'var(--green)' },
   long:  { title: '长休息', emoji: '🌴', color: 'var(--teal)' },
 };
@@ -299,7 +299,7 @@ function notify(prev) {
   const body = prev === 'work'
     ? (phase === 'long' ? `完成一轮！休息 ${settings.long} 分钟吧` : `休息 ${settings.short} 分钟吧`)
     : '开始新一轮专注吧';
-  try { new Notification(prev === 'work' ? '🍅 专注结束' : '💪 休息结束', { body }); } catch (e) {}
+  try { new Notification(prev === 'work' ? '📖 专注结束' : '💪 休息结束', { body }); } catch (e) {}
 }
 
 // ---------- 渲染 ----------
@@ -331,7 +331,7 @@ function render() {
   $('autoStart').checked = settings.autoStart;
   $('sound').checked = settings.sound;
 
-  document.title = idle ? '🍅 番茄钟' : `${running ? '' : '⏸ '}${meta.emoji} ${fmt(remaining)}`;
+  document.title = idle ? '📖 番茄钟' : `${running ? '' : '⏸ '}${meta.emoji} ${fmt(remaining)}`;
 }
 
 // ---------- 事件绑定 ----------
