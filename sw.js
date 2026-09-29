@@ -1,5 +1,5 @@
 // 离线缓存（仅在 HTTPS / localhost 下生效；局域网 http 访问时由 iOS 拒绝注册，不影响使用）
-const CACHE = 'pomodoro-1790684646';
+const CACHE = 'pomodoro-1790685023';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-512.png'];
 
 self.addEventListener('install', e => {
